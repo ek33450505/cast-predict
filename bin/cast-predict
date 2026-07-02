@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# cast-predict — telemetry-driven dispatch prediction over cast.db.
+set -euo pipefail
+
+[[ "${CLAUDE_SUBPROCESS:-}" == "1" ]] && exit 0
+
+_source="${BASH_SOURCE[0]}"
+while [ -L "$_source" ]; do
+  _dir="$(cd -P "$(dirname "$_source")" && pwd)"
+  _source="$(readlink "$_source")"
+  [[ "$_source" != /* ]] && _source="$_dir/$_source"
+done
+SELF_DIR="$(cd -P "$(dirname "$_source")" && pwd)"
+
+_resolve_script() {
+  local candidates=(
+    "${CAST_PREDICT_SCRIPT:-}"
+    "$SELF_DIR/../scripts/cast-predict.py"
+    "$SELF_DIR/../lib/cast-predict/cast-predict.py"
+    "$HOME/.local/lib/cast-predict/cast-predict.py"
+  )
+  local c
+  for c in "${candidates[@]}"; do
+    [[ -n "$c" && -f "$c" ]] && { printf '%s\n' "$c"; return 0; }
+  done
+  return 1
+}
+
+_resolve_version() {
+  local c
+  for c in "$SELF_DIR/../VERSION" "$SELF_DIR/../lib/cast-predict/VERSION" "$HOME/.local/lib/cast-predict/VERSION"; do
+    [[ -f "$c" ]] && { cat "$c"; return 0; }
+  done
+  printf 'unknown\n'
+}
+
+_die() { printf 'cast-predict: %s\n' "$*" >&2; exit 1; }
+
+SCRIPT="$(_resolve_script || true)"
+
+case "${1:-}" in
+  version|--version|-v)
+    printf 'cast-predict v%s\n' "$(_resolve_version)"
+    ;;
+  help|"")
+    cat <<'EOF'
+Usage: cast-predict "<task description>" [--limit N] [--json] [--db PATH]
+
+  Reads cast.db to predict a task's likely cost, suggest agents, and surface
+  related incidents from prior sessions. Read-only (cast.db mode=ro), local-only.
+
+  --limit N   Max agents / incidents to show (default 5)
+  --json      Machine-readable JSON output
+  version     Print version
+EOF
+    ;;
+  *)
+    [[ -n "$SCRIPT" ]] || _die "cast-predict.py not found. Run: bash install.sh (or set CAST_PREDICT_SCRIPT)"
+    exec python3 "$SCRIPT" "$@"
+    ;;
+esac

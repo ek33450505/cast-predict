@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    name: shellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          ignore_paths: tests/test_helper
+          severity: error
+
+  ruff:
+    name: ruff
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pipx install ruff || pip install ruff
+      - run: ruff check scripts/
+
+  syntax:
+    name: bash -n syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          set -e
+          for f in bin/cast-predict install.sh uninstall.sh; do
+            echo "  syntax: $f"
+            bash -n "$f"
+          done
+
+  bats:
+    name: bats / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install BATS
+        run: |
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            brew install bats-core
+          else
+            sudo apt-get update && sudo apt-get install -y bats
+          fi
+      - name: Run BATS
+        run: bats tests/
+
+  install-roundtrip:
+    name: install.sh round-trip
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: install + uninstall round-trip
+        run: |
+          set -e
+          bash install.sh
+          test -x "$HOME/.local/bin/cast-predict"
+          test -f "$HOME/.local/lib/cast-predict/cast-predict.py"
+          "$HOME/.local/bin/cast-predict" version
+          "$HOME/.local/bin/cast-predict" help | grep -q Usage
+          bash uninstall.sh
+          test ! -f "$HOME/.local/bin/cast-predict"

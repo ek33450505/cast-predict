@@ -1,0 +1,6 @@
+*.bak
+*.swp
+.DS_Store
+tests/test_helper/
+.ruff_cache/
+__pycache__/
