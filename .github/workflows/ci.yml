@@ -29,7 +29,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pipx install ruff || pip install ruff
+      # Pinned: unpinned installs float to latest; ruff 0.16.0 enabled new
+      # default rules (EXE001/BLE001/S110) that this repo's code predates.
+      # Mirrors claude-agent-team's security-scan.yml. Bump deliberately.
+      - run: pip install ruff==0.15.14
       - run: ruff check scripts/
 
   syntax:
