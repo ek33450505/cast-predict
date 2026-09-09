@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.1.1] — 2026-09-09
+
+Maintenance release. No behaviour change to prediction output.
+
+### Fixed
+- `scripts/cast-predict.py` carried a shebang but was not executable (`EXE001`).
+- CI installed `ruff` unpinned, so the gate floated to whatever `ruff` released
+  most recently. `ruff` 0.16.x enabled new default rules this repo's code
+  predates, meaning CI would have failed on `main` for a reason unrelated to any
+  change. Pinned to `0.15.14`, mirroring `claude-agent-team`'s `security-scan.yml`.
+
+### Verified
+- Queries were live-probed against a copy of a current `cast.db`: all tables and
+  columns `cast-predict.py` reads still exist, and prediction output is correct.
+
 ## [0.1.0] — 2026-07-01
 
 Initial release. Extracted from [claude-agent-team](https://github.com/ek33450505/claude-agent-team) v9's `cast predict` command.
